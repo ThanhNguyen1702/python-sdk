@@ -44,7 +44,8 @@ class SseServerParameters(BaseModel):
 
 
 class StreamableHttpParameters(BaseModel):
-    """Parameters for intializing a streamablehttp_client."""
+    """Parameters for intializing a stream
+    ablehttp_client."""
 
     # The endpoint URL.
     url: str

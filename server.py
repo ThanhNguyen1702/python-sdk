@@ -20,6 +20,9 @@ def get_db_connection():
         # Option 1: Use connection string
         conn_string = f"host={DB_CONFIG['host']} port={DB_CONFIG['port']} dbname={DB_CONFIG['database']} user={DB_CONFIG['user']} password={DB_CONFIG['password']}"
         conn = psycopg2.connect(conn_string)
+        cursor = conn.cursor()
+        cursor.execute("SET search_path TO app, public")
+        cursor.close()
         return conn
     except Exception as e:
         raise Exception(f"Database connection failed: {str(e)}")
@@ -27,21 +30,39 @@ def get_db_connection():
 
 @mcp.tool()
 def execute_query(query: str) -> str:
-    """Execute a SELECT query and return results as JSON"""
-    if not query.strip().upper().startswith('SELECT'):
-        return "Error: Only SELECT queries are allowed for security reasons"
-    
+    """
+    Execute a SQL query (SELECT, UPDATE, INSERT, DELETE) and return results or status.
+    SELECT returns JSON results.
+    Other queries return a success message with affected row count.
+    """
     try:
         conn = get_db_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cursor.execute(query)
-        results = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        
-        # Convert to list of dictionaries for JSON serialization
-        results_list = [dict(row) for row in results]
-        return json.dumps(results_list, indent=2, default=str)
+
+        # Check query type
+        command = query.strip().split()[0].upper()
+
+        if command == 'SELECT':
+            cursor.execute(query)
+            results = cursor.fetchall()
+            cursor.close()
+            conn.close()
+
+            # Convert to list of dictionaries for JSON serialization
+            results_list = [dict(row) for row in results]
+            return json.dumps(results_list, indent=2, default=str)
+
+        elif command in ('UPDATE', 'INSERT', 'DELETE'):
+            cursor.execute(query)
+            affected = cursor.rowcount
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return f"Success: {affected} row(s) affected."
+
+        else:
+            return "Error: Only SELECT, INSERT, UPDATE, DELETE queries are allowed."
+
     except Exception as e:
         return f"Error executing query: {str(e)}"
 
