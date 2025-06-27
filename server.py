@@ -83,7 +83,7 @@ def list_tables() -> str:
     query = """
     SELECT table_name, table_type 
     FROM information_schema.tables 
-    WHERE table_schema = 'public'
+    WHERE table_schema = 'app' OR table_schema = 'public'
     ORDER BY table_name;
     """
     return execute_query(query)
